@@ -15,7 +15,6 @@ def print(data):
                 bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
 '''
 
-'''               
 import sys
 if sys.version_info[0] < 3: 
     from StringIO import StringIO
@@ -24,7 +23,6 @@ else:
 
 import pandas as pd
 
-'''
     
 from random import randint, choice, random, uniform
 import numpy as np
@@ -145,6 +143,7 @@ class ConnectedRooms(object):
                 else:
                     ln+=icons[self.proof[h,v]]
             print(ln)
+    
             
     #-----------------------------------------------------------------------------------------------
     def print_df(self):
@@ -157,7 +156,8 @@ class ConnectedRooms(object):
             else:
                 df_string += str(i) + "\n"
         
-        for k,v in self.roomDims.items():
+        for k in self.roomDims.keys():
+            v = self.roomDims[k]["floor"]
             self.proof[v["xMax"],v["yMax"]] = TILE_ROOM_CORNER
             self.proof[v["xMin"],v["yMax"]] = TILE_ROOM_CORNER
             self.proof[v["xMax"],v["yMin"]] = TILE_ROOM_CORNER
@@ -169,7 +169,7 @@ class ConnectedRooms(object):
             ln=''
             for h in range(self.map_width):
                 if self.proof[h,v] == TILE_FLOOR:
-                    ln+=str(self.proof[h,v])+";"
+                    ln+=str(self.rmap[h,v])+";"
                 else:
                     ln+=icons[self.proof[h,v]]+";"
             df_string += ln + "\n"
@@ -224,9 +224,9 @@ class ConnectedRooms(object):
 
             corner_u = [tiles["xMax"] - 1,tiles["yMax"] + 1]
 
-            walls = {}
+            self.roomDims[room]["walls"] = {}
 
-            walls = walls
+            walls = self.roomDims[room]["walls"]
 
             walls["top"] = {
                 "min": corner_x,
@@ -279,26 +279,27 @@ class ConnectedRooms(object):
                 
             wallCount = 0
             lastCount = 0
-
+            
+            walls["top"]["segments"] = []
+            
             for j in range(roomWidth):
                 if corner_x[0] + j < self.map_width:
                     if wallCount == lastCount:
                         if self.proof[corner_x[0] + j, corner_x[1]] == TILE_WALL or self.proof[corner_x[0] + j, corner_x[1]] == TILE_CORNER:
-                            if wallCount == 0:
-                                walls["top"]["segments"] = [corner_x[0] + j]
-                            else:
-                                walls["top"]["segments"].append([corner_x[0] + j])
+                            walls["top"]["segments"].append([[corner_x[0]+j,corner_x[1]]])
                             self.proof[corner_x[0]+j,corner_x[1]] = TILE_VISITED
                             wallCount += 1
                     else:
                         if self.proof[corner_x[0] + j, corner_x[1]] == TILE_WALL or self.proof[corner_x[0] + j, corner_x[1]] == TILE_CORNER:
-                            walls["top"]["segments"].append(corner_x[0] + j)
+                            walls["top"]["segments"][lastCount].append([corner_x[0]+j,corner_x[1]])
                             self.proof[corner_x[0]+j,corner_x[1]] = TILE_VISITED
                         else:
                             lastCount += 1
 
             wallCount = 0
-            lastCount = 0            
+            lastCount = 0
+            
+            walls["bottom"]["segments"] = []
                         
             ## iterate for second x corner
 
@@ -306,57 +307,52 @@ class ConnectedRooms(object):
                 if corner_z[0] + j < self.map_width:
                     if wallCount == lastCount:
                         if self.proof[corner_z[0] + j, corner_z[1]] == TILE_WALL or self.proof[corner_x[0] + j, corner_x[1]] == TILE_CORNER:
-                            if wallCount == 0:
-                                walls["bottom"]["segments"] = [corner_z[0] + j]
-                            else:
-                                walls["bottom"]["segments"].append([[corner_z[0] + j]])
+                            walls["bottom"]["segments"].append([[corner_z[0]+j,corner_z[1]]])
                             self.proof[corner_z[0]+j,corner_z[1]] = TILE_VISITED
                             wallCount += 1
                     else:
                         if self.proof[corner_z[0] + j, corner_z[1]] == TILE_WALL or self.proof[corner_x[0] + j, corner_x[1]] == TILE_CORNER:
-                            walls["bottom"]["segments"].append(corner_z[0] + j)
+                            walls["bottom"]["segments"][lastCount].append([corner_z[0]+j,corner_z[1]])
                             self.proof[corner_z[0]+j,corner_z[1]] = TILE_VISITED
                         else:
                             lastCount += 1
             
             wallCount = 0
             lastCount = 0      
+            
+            walls["left"]["segments"] = []
 
             ## iterate for y corner in reverse
             
             for j in range(roomHeight,-1,-1):
                 if wallCount == lastCount:
                     if self.proof[corner_w[0], corner_w[1] + j] == TILE_WALL or self.proof[corner_w[0], corner_w[1] + j] == TILE_CORNER:
-                        if wallCount == 0:
-                            walls["left"]["segments"] = [corner_w[1] + j]
-                        else:
-                            walls["left"]["segments"].append([corner_w[1] + j])
+                        walls["left"]["segments"].append([[corner_w[0],corner_w[1] + j]])
                         self.proof[corner_w[0],corner_w[1] + j] = TILE_VISITED
                         wallCount += 1
                 else:
                     if self.proof[corner_w[0], corner_w[1]+j] == TILE_WALL or self.proof[corner_w[0], corner_w[1]+j] == TILE_CORNER:
-                        walls["left"]["segments"].append(corner_w[1] + j)
+                        walls["left"]["segments"][lastCount].append([corner_w[0], corner_w[1]+j])
                         self.proof[corner_w[0], corner_w[1]+j] = TILE_VISITED
                     else:
                         lastCount += 1
 
             wallCount = 0
-            lastCount = 0      
+            lastCount = 0
+            
+            walls["right"]["segments"] = []
 
             ##iterate for second y in reverse
             
             for j in range(roomHeight,-1,-1):
                 if wallCount == lastCount:
                     if self.proof[corner_y[0], corner_y[1] + j] == TILE_WALL or self.proof[corner_y[0], corner_y[1] + j] == TILE_CORNER:
-                        if wallCount == 0:
-                            walls["right"]["segments"] = [corner_y[1] + j]
-                        else:
-                            walls["right"]["segments"].append([corner_y[1] + j])
+                        walls["right"]["segments"].append([[corner_y[0],corner_y[1] + j]])
                         self.proof[corner_y[0],corner_y[1] + j] = TILE_VISITED
                         wallCount += 1
                 else:
                     if self.proof[corner_y[0], corner_y[1]+j] == TILE_WALL or self.proof[corner_y[0], corner_y[1]+j] == TILE_CORNER:
-                        walls["right"]["segments"].append(corner_y[1] + j)
+                        walls["right"]["segments"][lastCount].append([corner_y[0],corner_y[1] + j])
                         self.proof[corner_y[0], corner_y[1]+j] = TILE_VISITED
                     else:
                         lastCount += 1
@@ -365,8 +361,8 @@ class ConnectedRooms(object):
             lastCount = 0           
 
                         
-        def getLevelData():
-            return self.roomDims
+    def getLevelData(self):
+        return self.roomDims
 
 '''    
 def render(self):
