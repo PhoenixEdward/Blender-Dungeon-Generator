@@ -3,7 +3,7 @@
 ###THIS IS THE ONE I'M WORKING ON
 
 
-'''
+
 import bpy
 import bmesh
 def print(data):
@@ -13,7 +13,7 @@ def print(data):
             if area.type == 'CONSOLE':
                 override = {'window': window, 'screen': screen, 'area': area}
                 bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
-'''
+                
 
 import sys
 if sys.version_info[0] < 3: 
@@ -21,7 +21,7 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
-import pandas as pd
+#import pandas as pd
 
     
 from random import randint, choice, random, uniform
@@ -146,6 +146,7 @@ class ConnectedRooms(object):
     
             
     #-----------------------------------------------------------------------------------------------
+
     def print_df(self):
                 
         df_string = ""
@@ -175,7 +176,7 @@ class ConnectedRooms(object):
             df_string += ln + "\n"
             
         return df_string
-            
+
     #-----------------------------------------------------------------------------------------------
     def getFloorDims(self):
         for v in range(self.map_height):
@@ -331,7 +332,7 @@ class ConnectedRooms(object):
                         self.proof[corner_w[0],corner_w[1] + j] = TILE_VISITED
                         wallCount += 1
                 else:
-                    if self.proof[corner_w[0], corner_w[1]+j] == TILE_WALL or self.proof[corner_w[0], corner_w[1]+j] == TILE_CORNER:
+                    if self.proof[corner_w[0], corner_w[1] + j] == TILE_WALL or self.proof[corner_w[0], corner_w[1] + j] == TILE_CORNER:
                         walls["left"]["segments"][lastCount].append([corner_w[0], corner_w[1]+j])
                         self.proof[corner_w[0], corner_w[1]+j] = TILE_VISITED
                     else:
@@ -351,7 +352,7 @@ class ConnectedRooms(object):
                         self.proof[corner_y[0],corner_y[1] + j] = TILE_VISITED
                         wallCount += 1
                 else:
-                    if self.proof[corner_y[0], corner_y[1]+j] == TILE_WALL or self.proof[corner_y[0], corner_y[1]+j] == TILE_CORNER:
+                    if self.proof[corner_y[0], corner_y[1] + j] == TILE_WALL or self.proof[corner_y[0], corner_y[1] + j] == TILE_CORNER:
                         walls["right"]["segments"][lastCount].append([corner_y[0],corner_y[1] + j])
                         self.proof[corner_y[0], corner_y[1]+j] = TILE_VISITED
                     else:
@@ -364,19 +365,21 @@ class ConnectedRooms(object):
     def getLevelData(self):
         return self.roomDims
 
-'''    
-def render(self):
+   
+    def render(self):
         
         bpyscene = bpy.context.scene
         
-        for k,v in self.roomDims.items():
+        for room in self.roomDims.keys():
             
-            mesh = bpy.data.meshes.new('New' + str(k))
-            basic_cube = bpy.data.objects.new('New' + str(k), mesh)
+            v = self.roomDims[room]["floor"]
+            
+            mesh = bpy.data.meshes.new('room' + str(room))
+            basic_cube = bpy.data.objects.new('room' + str(room), mesh)
 
             # Add the object into the scene.
             bpyscene.collection.objects.link(basic_cube)
-            igloo = bpy.context.window.scene.objects['New' + str(k)]
+            igloo = bpy.context.window.scene.objects['room' + str(room)]
             bpy.context.view_layer.objects.active = igloo
             basic_cube.select_set(True)
 
@@ -392,25 +395,112 @@ def render(self):
 
             activeObject = bpy.context.active_object #Set active object to variable
             
-            mat = bpy.data.materials["Rando" + str(k)]
+            mat = bpy.data.materials["floor" + str(room)]
             
             activeObject.data.materials.append(mat)
             
             basic_cube.select_set(False)
             
+            
+        ## generate walls
         
-        k = self.roomCount + 1
+            for side in self.roomDims[room]["walls"].keys():
+            
+                wall = self.roomDims[room]["walls"][side]
+                
+                s = 0        
+                    
+                if side == "top" or side == "bottom":
+                    
+                    for seg in self.roomDims[room]["walls"][side]["segments"]:
+                        
+                        mesh = bpy.data.meshes.new('wall' + str(room) + side + str(s))
+                        basic_cube = bpy.data.objects.new('wall' + str(room) + side + str(s), mesh)
+
+                        # Add the object into the scene.
+                        bpyscene.collection.objects.link(basic_cube)
+                        igloo = bpy.context.window.scene.objects['wall' + str(room) + side + str(s)]
+                        bpy.context.view_layer.objects.active = igloo
+                        basic_cube.select_set(True)
+
+                        # Construct the bmesh cube and assign it to the blender mesh.
+                        bm = bmesh.new()
+                        bmesh.ops.create_cube(bm, size=1.0)
+                        bm.to_mesh(mesh)
+                        bm.free()
+                    
+                        length = seg[-1][0] - seg[0][0] + 1
+                        
+            
+                        bpy.ops.transform.resize(value=(length, 1, 2))
+                        
+                        bpy.ops.transform.translate(value=(seg[-1][0]-(length/2), seg[0][1]-0.5, 0.5))
+                        
+                        activeObject = bpy.context.active_object #Set active object to variable
+                
+                        mat = bpy.data.materials["Rando" + str(room)]
+                
+                        activeObject.data.materials.append(mat)
+                
+                        basic_cube.select_set(False)
+                        
+                        s += 1        
+                    
+                elif side == "left" or side == "right":
+                    
+                    for seg in self.roomDims[room]["walls"][side]["segments"]:
+                        
+                        
+                        mesh = bpy.data.meshes.new('wall' + str(room) + side + str(s))
+                        basic_cube = bpy.data.objects.new('wall' + str(room) + side + str(s), mesh)
+
+                        # Add the object into the scene.
+                        bpyscene.collection.objects.link(basic_cube)
+                        igloo = bpy.context.window.scene.objects['wall' + str(room) + side + str(s)]
+                        bpy.context.view_layer.objects.active = igloo
+                        basic_cube.select_set(True)
+
+                        # Construct the bmesh cube and assign it to the blender mesh.
+                        bm = bmesh.new()
+                        bmesh.ops.create_cube(bm, size=1.0)
+                        bm.to_mesh(mesh)
+                        bm.free()
+                                        
+                        length = seg[0][1] - seg[-1][1] + 1
+                                    
+                        bpy.ops.transform.resize(value=(1, length, 2))
+                        
+                        bpy.ops.transform.translate(value=(seg[0][0]-0.5,seg[0][1]-(length/2), 0.5))
+                        
+                        activeObject = bpy.context.active_object #Set active object to variable
+                
+                        mat = bpy.data.materials["Rando" + str(room)]
+                
+                        activeObject.data.materials.append(mat)
+                
+                        basic_cube.select_set(False)
+                        
+                        s+=1 
+                                
+                else:
+                    print("somthing fucked up")
+            
+ 
+        ## generate doors
+        
+        k = 0
+            
             
         for v in range(self.map_height):
             for h in range(self.map_width):
                 if self.dmap[h,v] == TILE_OPEN_DOOR or self.dmap[h,v] == TILE_CLOSED_DOOR:
                     
-                    mesh = bpy.data.meshes.new('New' + str(k))
-                    basic_cube = bpy.data.objects.new('New' + str(k), mesh)
+                    mesh = bpy.data.meshes.new('door' + str(k))
+                    basic_cube = bpy.data.objects.new('door' + str(k), mesh)
 
                     # Add the object into the scene.
                     bpyscene.collection.objects.link(basic_cube)
-                    igloo = bpy.context.window.scene.objects['New' + str(k)]
+                    igloo = bpy.context.window.scene.objects['door' + str(k)]
                     bpy.context.view_layer.objects.active = igloo
                     basic_cube.select_set(True)
 
@@ -434,15 +524,6 @@ def render(self):
                     basic_cube.select_set(False)
                     
                     k += 1
-#TILE_WALL        
-#TILE_CORNER      
-#TILE_OPEN_DOOR   
-#TILE_CLOSED_DOOR 
-#TILE_PLAYER      
-#TILE_ROOM_CORNER
-
-'''
-    
 #-----------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -451,4 +532,4 @@ if __name__ == '__main__':
     cr.getFloorDims()
     cr.getWallDims()
     cr.print_map()
-    #cr.render()
+    cr.render()
