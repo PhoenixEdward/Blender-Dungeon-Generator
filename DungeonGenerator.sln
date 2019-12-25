@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29123.88
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "DungeonGenerator", "DungeonGenerator.pyproj", "{410DC326-19C5-40B0-813C-BF2EAA2942EF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{410DC326-19C5-40B0-813C-BF2EAA2942EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{410DC326-19C5-40B0-813C-BF2EAA2942EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CD1292EC-ECD0-47B0-B0C1-384C38CC9C03}
+	EndGlobalSection
+EndGlobal
