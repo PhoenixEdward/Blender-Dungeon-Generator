@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>410dc326-19c5-40b0-813c-bf2eaa2942ef</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>DungeonGenerator.py</StartupFile>
+    <StartupFile>main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,8 +22,8 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="DungeonGenerator.py" />
-    <Compile Include="DungeonGenOld.py">
+    <Compile Include="main.py" />
+    <Compile Include="Area.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
