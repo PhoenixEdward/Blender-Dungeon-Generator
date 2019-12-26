@@ -4,24 +4,25 @@
 
 
 
-try:
-    import bpy
-    import bmesh
-    def print(data):
-        for window in bpy.context.window_manager.windows:
-            screen = window.screen
-            for area in screen.areas:
-                if area.type == 'CONSOLE':
-                    override = {'window': window, 'screen': screen, 'area': area}
-                    bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
-except:
-    pass
+import bpy
+import bmesh
+def print(data):
+    for window in bpy.context.window_manager.windows:
+        screen = window.screen
+        for area in screen.areas:
+            if area.type == 'CONSOLE':
+                override = {'window': window, 'screen': screen, 'area': area}
+                bpy.ops.console.scrollback_append(override, text=str(data), type="OUTPUT")
+                
 
+import sys
+if sys.version_info[0] < 3: 
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
-try:    
-    import pandas as pd
-except:
-    pass
+#import pandas as pd
+
     
 from random import randint, choice, random, uniform
 import numpy as np
@@ -42,47 +43,6 @@ TILE_ROOM_CORNER = 7 #'?'
 TILE_VISITED     = 8 #'$'
 TILE_POPULAR     = 9 #'&'
 TILE_WALL_CORNER = 10#'%'
-
-class Vector2Int():
-    def __init__(self, x = 0, y = 0):
-        self.x = x
-        self.y = y
-
-    def copy(self):
-        return Vector2Int(self.x,self.y)
-
-class Wall():
-    def __init__(self):
-        self.segments = []
-        self.min = Vector2Int()
-        self.max = Vector2Int()
-
-    def copy(self):
-        return self
-
-class Floor():
-    def __init__(self):
-        self.xMax = 0
-        self.xMin = 0
-        self.yMax = 0
-        self.yMin = 0
-        self.width = 0
-        self.height = 0
-
-    def copy(self):
-        return self
-
-class RoomDims():
-    def __init__(self):
-        self.floor = Floor()
-        self.walls = {
-            "top": Wall(),
-            "bottom": Wall(),
-            "left": Wall(),
-            "right": Wall()
-            }
-    def copy(self):
-        return self
 #-----------------------------------------------------------------------------------------------
 class ConnectedRooms(object):
     """build a map of interconnected rooms"""
@@ -95,7 +55,7 @@ class ConnectedRooms(object):
         self.rmap=np.zeros((width, height), dtype=np.uint8)
         self.proof=np.zeros((width, height), dtype=np.uint8) 
         self.roomTiles = [None] * roomCount
-        self.roomDims = []
+        self.roomDims = {}
         self.wallTilesX = {}
         self.wallTilesY =  {}
         #may not need
@@ -166,16 +126,16 @@ class ConnectedRooms(object):
     #-----------------------------------------------------------------------------------------------
     def print_map(self):
         #change the TILE_CORNER to another character such as ! to see the corners in the map.        
-        for k in range(len(self.roomDims)):
-            v = self.roomDims[k].floor
-            self.proof[v.xMax,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMax,v.yMin] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMin] = TILE_ROOM_CORNER
+        for k in self.roomDims.keys():
+            v = self.roomDims[k]["floor"]
+            self.proof[v["xMax"],v["yMax"]] = TILE_ROOM_CORNER
+            self.proof[v["xMin"],v["yMax"]] = TILE_ROOM_CORNER
+            self.proof[v["xMax"],v["yMin"]] = TILE_ROOM_CORNER
+            self.proof[v["xMin"],v["yMin"]] = TILE_ROOM_CORNER
             
                 #change the TILE_CORNER to another character such as ! to see the corners in the map.
         icons={TILE_VOID:' ', TILE_FLOOR:'.', TILE_WALL:'#', TILE_CORNER:'!', TILE_OPEN_DOOR:'+', TILE_CLOSED_DOOR:'*', TILE_PLAYER:'@', TILE_ROOM_CORNER:'?', TILE_VISITED:'$',TILE_POPULAR:'&', TILE_WALL_CORNER:'%'}
-        for v in range(self.map_height-1, -1,-1):
+        for v in range(self.map_height):
             ln=''
             for h in range(self.map_width):
                 if self.proof[h,v] == TILE_FLOOR:
@@ -198,11 +158,11 @@ class ConnectedRooms(object):
                 df_string += str(i) + "\n"
         
         for k in self.roomDims.keys():
-            v = self.roomDims[k].floor
-            self.proof[v.xMax,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMax,v.yMin] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMin] = TILE_ROOM_CORNER
+            v = self.roomDims[k]["floor"]
+            self.proof[v["xMax"],v["yMax"]] = TILE_ROOM_CORNER
+            self.proof[v["xMin"],v["yMax"]] = TILE_ROOM_CORNER
+            self.proof[v["xMax"],v["yMin"]] = TILE_ROOM_CORNER
+            self.proof[v["xMin"],v["yMin"]] = TILE_ROOM_CORNER
             
                 #change the TILE_CORNER to another character such as ! to see the corners in the map.
         icons={TILE_VOID:' ', TILE_FLOOR:'.', TILE_WALL:'#', TILE_CORNER:'!', TILE_OPEN_DOOR:'+', TILE_CLOSED_DOOR:'*', TILE_PLAYER:'@', TILE_ROOM_CORNER:'?', TILE_VISITED:'$',TILE_POPULAR:'&', TILE_WALL_CORNER:'%'}
@@ -232,94 +192,104 @@ class ConnectedRooms(object):
                         self.roomTiles[roomKey][1].append(v)
                     
         for i in range(self.roomCount):
-            self.roomDims.append(RoomDims())
-            self.roomDims[i].floor.xMax = max(self.roomTiles[i][0])
-            self.roomDims[i].floor.xMin = min(self.roomTiles[i][0])
-            self.roomDims[i].floor.yMax = max(self.roomTiles[i][1])
-            self.roomDims[i].floor.yMin = min(self.roomTiles[i][1])
-            self.roomDims[i].floor.width = max(self.roomTiles[i][0]) - min(self.roomTiles[i][0]) + 1
-            self.roomDims[i].floor.height = max(self.roomTiles[i][1]) - min(self.roomTiles[i][1]) + 1
+            self.roomDims[i] = {}
+            self.roomDims[i]["floor"] = {
+                "xMax": max(self.roomTiles[i][0]),
+                "xMin": min(self.roomTiles[i][0]),
+                "yMax": max(self.roomTiles[i][1]),
+                "yMin": min(self.roomTiles[i][1]),
+                "width": max(self.roomTiles[i][0]) - min(self.roomTiles[i][0]) + 1,
+                "height": max(self.roomTiles[i][1]) - min(self.roomTiles[i][1]) + 1,
+            }
             
             
     def getWallDims(self):
              
         ## get room corners and instantiate walls dictionary
 
-        for room in range(len(self.roomDims)):
+        for room in self.roomDims.keys():
 
-            tiles = self.roomDims[room].floor
+            tiles = self.roomDims[room]["floor"]
+
+            roomWidth = tiles["xMax"] - tiles["xMin"] + 2
+            roomHeight = tiles["yMax"] - tiles["yMin"] + 2
                         
-            cornerTopLeft = Vector2Int(tiles.xMin - 1,tiles.yMax + 1)
-            cornerBottomRight = Vector2Int(tiles.xMax + 1,tiles.yMin - 1)
+            cornerTopLeft = [tiles["xMin"] - 1,tiles["yMax"] + 1]
+            cornerBottomRight = [tiles["xMax"] + 1,tiles["yMin"] - 1]
             
-            cornerBottomLeft = Vector2Int(tiles.xMin - 1,tiles.yMin - 1)
-            cornerTopRight = Vector2Int(tiles.xMax - 1,tiles.yMax + 1)
+            cornerBottomLeft = [tiles["xMin"] - 1,tiles["yMin"] - 1]
+            cornerTopRight = [tiles["xMax"] - 1,tiles["yMax"] + 1]
 
-            walls = self.roomDims[room].walls
+            self.roomDims[room]["walls"] = {}
+
+            walls = self.roomDims[room]["walls"]
             
+            walls["top"] = {
+                "min": cornerTopLeft,
+                "max": cornerTopRight
+                }
 
-            walls["top"].min = cornerTopLeft
-            walls["top"].max = cornerTopRight
+            walls["bottom"] = {
+                "min": cornerBottomLeft,
+                "max": cornerBottomRight
+                }
 
-            walls["bottom"].min = cornerBottomLeft
-            walls["bottom"].max = cornerBottomRight
+            walls["left"] = {
+                "min": cornerBottomLeft,
+                "max": cornerTopLeft
+                }
 
-            walls["left"].min = cornerBottomLeft
-            walls["left"].max = cornerTopLeft
+            walls["right"] = {
+                "min": cornerBottomRight,
+                "max": cornerTopRight,
+                }
 
-            walls["right"].min = cornerBottomRight
-            walls["right"].max = cornerTopRight
-                
 
         ## layout "greedy" x walls
 
-        for room in range(len(self.roomDims)):
+        for room in self.roomDims.keys():
 
-            ## add 3 due to the need to check current space as well as the 2 additional tiles added by wall depth.
+            tiles = self.roomDims[room]["floor"]
 
-            tiles = self.roomDims[room].floor
+            roomWidth = tiles["xMax"] - tiles["xMin"] + 3
 
-            roomWidth = tiles.xMax - tiles.xMin + 3
-
-            walls = self.roomDims[room].walls
+            walls = self.roomDims[room]["walls"]
             
             ##almost certainly need to add more to below. They will need to check incremented by 2 incase the first alternative is a corner
 
             ##check if tiles have been visited and adjust edges accordingingly
             
-            startTop = walls["top"].min.copy()
-            startBottom = walls["bottom"].min.copy()
+            startTop = self.roomDims[room]["walls"]["top"]["min"]
+            startBottom = self.roomDims[room]["walls"]["bottom"]["min"]
 
             wallWidth = roomWidth
 
             push = 0
 
             while push < roomWidth:
-                if startTop.x + push < self.map_width:
-                    if self.proof[startTop.x + push,startTop.y] == TILE_WALL or self.proof[startTop.x + push,startTop.y] == TILE_CORNER:
-                        startTop = Vector2Int(startTop.x + push,startTop.y)
-                        break
-                    wallWidth -= 1
-                    push += 1
-                else:
-                    startTop = Vector2Int(startTop.x + push - 1,startTop.y)
+                if self.proof[startTop[0] + push,startTop[1]] == TILE_WALL or self.proof[startTop[0] + push,startTop[1]] == TILE_CORNER:
+                    startTop = [startTop[0] + push,startTop[1]]
                     break
+                wallWidth -= 1
+                push += 1
             
                 
             wallCount = 0
             lastCount = 0
-                        
+            
+            walls["top"]["segments"] = []
+            
             for j in range(wallWidth):
-                if startTop.x + j < self.map_width:
+                if startTop[0] + j < self.map_width:
                     if wallCount == lastCount:
-                        if self.proof[startTop.x + j, startTop.y] == TILE_WALL or self.proof[startTop.x + j, startTop.y] == TILE_CORNER:
-                            walls["top"].segments.append([Vector2Int(startTop.x+j,startTop.y)])
-                            self.proof[startTop.x+j,startTop.y] = TILE_VISITED
+                        if self.proof[startTop[0] + j, startTop[1]] == TILE_WALL or self.proof[startTop[0] + j, startTop[1]] == TILE_CORNER:
+                            walls["top"]["segments"].append([[startTop[0]+j,startTop[1]]])
+                            self.proof[startTop[0]+j,startTop[1]] = TILE_VISITED
                             wallCount += 1
                     else:
-                        if self.proof[startTop.x + j, startTop.y] == TILE_WALL or self.proof[startTop.x + j, startTop.y] == TILE_CORNER:
-                            walls["top"].segments[lastCount].append(Vector2Int(startTop.x+j,startTop.y))
-                            self.proof[startTop.x+j,startTop.y] = TILE_VISITED
+                        if self.proof[startTop[0] + j, startTop[1]] == TILE_WALL or self.proof[startTop[0] + j, startTop[1]] == TILE_CORNER:
+                            walls["top"]["segments"][lastCount].append([startTop[0]+j,startTop[1]])
+                            self.proof[startTop[0]+j,startTop[1]] = TILE_VISITED
                         else:
                             lastCount += 1
             
@@ -328,85 +298,76 @@ class ConnectedRooms(object):
             push = 0
 
             while push < roomWidth:
-                if startBottom.x + push < self.map_width:
-                    if self.proof[startBottom.x + push,startBottom.y] == TILE_WALL or self.proof[startBottom.x + push,startBottom.y] == TILE_CORNER:
-                        startBottom = Vector2Int(startBottom.x + push,startBottom.y)
-                        break
-                    wallWidth -= 1
-                    push += 1
-                else:
-                    print("goof")
-                    startBottom = Vector2Int(startBottom.x + push -1,startBottom.y)
+                if self.proof[startBottom[0] + push,startBottom[1]] == TILE_WALL or self.proof[startBottom[0] + push,startBottom[1]] == TILE_CORNER:
+                    startBottom = [startBottom[0] + push,startBottom[1]]
                     break
+                wallWidth -= 1
+                push += 1
+                            
 
             wallCount = 0
             lastCount = 0
-                                    
+            
+            walls["bottom"]["segments"] = []
+                        
             ## iterate for second x corner
 
             for j in range(wallWidth):
-                if startBottom.x + j < self.map_width:
+                if startBottom[0] + j < self.map_width:
                     if wallCount == lastCount:
-                        if self.proof[startBottom.x + j, startBottom.y] == TILE_WALL or self.proof[startBottom.x + j, startBottom.y] == TILE_CORNER:
-                            walls["bottom"].segments.append([Vector2Int(startBottom.x+j,startBottom.y)])
-                            self.proof[startBottom.x+j,startBottom.y] = TILE_VISITED
+                        if self.proof[startBottom[0] + j, startBottom[1]] == TILE_WALL or self.proof[startBottom[0] + j, startBottom[1]] == TILE_CORNER:
+                            walls["bottom"]["segments"].append([[startBottom[0]+j,startBottom[1]]])
+                            self.proof[startBottom[0]+j,startBottom[1]] = TILE_VISITED
                             wallCount += 1
                     else:
-                        if self.proof[startBottom.x + j, startBottom.y] == TILE_WALL or self.proof[startBottom.x + j, startBottom.y] == TILE_CORNER:
-                            walls["bottom"].segments[lastCount].append(Vector2Int(startBottom.x+j,startBottom.y))
-                            self.proof[startBottom.x+j,startBottom.y] = TILE_VISITED
+                        if self.proof[startBottom[0] + j, startBottom[1]] == TILE_WALL or self.proof[startBottom[0] + j, startBottom[1]] == TILE_CORNER:
+                            walls["bottom"]["segments"][lastCount].append([startBottom[0]+j,startBottom[1]])
+                            self.proof[startBottom[0]+j,startBottom[1]] = TILE_VISITED
                         else:
                             lastCount += 1
-
-            self.proof[startTop.x,startTop.y] = TILE_POPULAR
-            self.proof[startBottom.x,startBottom.y] = TILE_POPULAR
+                        
 
         
-        for room in range(len(self.roomDims)):
+        for room in self.roomDims.keys():
 
-            tiles = self.roomDims[room].floor
+            tiles = self.roomDims[room]["floor"]
 
-            roomHeight = tiles.yMax - tiles.yMin + 3
+            roomHeight = tiles["yMax"] - tiles["yMin"] + 2
 
-            walls = self.roomDims[room].walls
+            walls = self.roomDims[room]["walls"]
 
-            startLeft = walls["left"].min.copy()
-            startRight = walls["right"].min. copy()
+            startLeft = self.roomDims[room]["walls"]["left"]["min"]
+            startRight = self.roomDims[room]["walls"]["right"]["min"]
 
             wallHeight = roomHeight
 
             push = 0
 
-            ##possibly remove tile_corner
-
             while push < roomHeight:
-                if startLeft.y + push < self.map_height:
-                    if self.proof[startLeft.x,startLeft.y + push] == TILE_WALL or self.proof[startLeft.x,startLeft.y+ push] == TILE_CORNER:
-                        startLeft = Vector2Int(startLeft.x,startLeft.y+push)
-                        break
-                    wallHeight -= 1
-                    push += 1
-                else:
-                    print("Goof!")
-                    startLeft = Vector2Int(startLeft.x,startLeft.y+push - 1)
+                if self.proof[startLeft[0],startLeft[1] + push] == TILE_WALL or self.proof[startLeft[0],startLeft[1]+ push] == TILE_CORNER:
+                    startLeft = [startLeft[0],startLeft[1]+push]
                     break
+                wallHeight -= 1
+                push += 1
 
             wallCount = 0
             lastCount = 0
             
+            walls["left"]["segments"] = []
+
             ## iterate for y corner
             
             for j in range(wallHeight):
-                if startLeft.y + j < self.map_height:
+                if j < self.map_height:
                     if wallCount == lastCount:
-                        if self.proof[startLeft.x, startLeft.y + j] == TILE_WALL:
-                            walls["left"].segments.append([Vector2Int(startLeft.x,startLeft.y + j)])
-                            self.proof[startLeft.x,startLeft.y + j] = TILE_VISITED
+                        if self.proof[startLeft[0], startLeft[1] + j] == TILE_WALL:
+                            walls["left"]["segments"].append([[startLeft[0],startLeft[1] + j]])
+                            self.proof[startLeft[0],startLeft[1] + j] = TILE_VISITED
                             wallCount += 1
                     else:
-                        if self.proof[startLeft.x, startLeft.y + j] == TILE_WALL:
-                            walls["left"].segments[lastCount].append(Vector2Int(startLeft.x, startLeft.y+j))
-                            self.proof[startLeft.x, startLeft.y+j] = TILE_VISITED
+                        if self.proof[startLeft[0], startLeft[1] + j] == TILE_WALL:
+                            walls["left"]["segments"][lastCount].append([startLeft[0], startLeft[1]+j])
+                            self.proof[startLeft[0], startLeft[1]+j] = TILE_VISITED
                         else:
                             lastCount += 1
 
@@ -415,35 +376,32 @@ class ConnectedRooms(object):
             push = 0
 
             while push < roomHeight:
-                if startRight.y + push < self.map_height:
-                    if self.proof[startRight.x,startRight.y+ push] == TILE_WALL or self.proof[startRight.x,startRight.y+ push] == TILE_CORNER:
-                        startRight = Vector2Int(startRight.x,startRight.y+ push)
-                        break
-                    wallHeight -= 1
-                    push += 1
-                else:
+                if self.proof[startRight[0],startRight[1]+ push] == TILE_WALL or self.proof[startRight[0],startRight[1]+ push] == TILE_CORNER:
+                    startRight = [startRight[0],startRight[1]+ push]
                     break
+                wallHeight -= 1
+                push += 1
+
             wallCount = 0
             lastCount = 0
             
+            walls["right"]["segments"] = []
+
             ##iterate for second y
             
             for j in range(wallHeight):
-                if startRight.y + j < self.map_height:
+                if j < self.map_height:
                     if wallCount == lastCount:
-                        if self.proof[startRight.x, startRight.y + j] == TILE_WALL:
-                            walls["right"].segments.append([Vector2Int(startRight.x,startRight.y + j)])
-                            self.proof[startRight.x,startRight.y + j] = TILE_VISITED
+                        if self.proof[startRight[0], startRight[1] + j] == TILE_WALL:
+                            walls["right"]["segments"].append([[startRight[0],startRight[1] + j]])
+                            self.proof[startRight[0],startRight[1] + j] = TILE_VISITED
                             wallCount += 1
                     else:
-                        if self.proof[startRight.x, startRight.y + j] == TILE_WALL:
-                            walls["right"].segments[lastCount].append(Vector2Int(startRight.x,startRight.y + j))
-                            self.proof[startRight.x, startRight.y+j] = TILE_VISITED
+                        if self.proof[startRight[0], startRight[1] + j] == TILE_WALL:
+                            walls["right"]["segments"][lastCount].append([startRight[0],startRight[1] + j])
+                            self.proof[startRight[0], startRight[1]+j] = TILE_VISITED
                         else:
                             lastCount += 1
-
-            self.proof[startLeft.x,startLeft.y] = TILE_POPULAR
-            self.proof[startRight.x,startRight.y] = TILE_POPULAR
 
     def getLevelData(self):
         return self.roomDims
@@ -453,9 +411,9 @@ class ConnectedRooms(object):
         
         bpyscene = bpy.context.scene
         
-        for room in range(len(self.roomDims)):
+        for room in self.roomDims.keys():
             
-            v = self.roomDims[room].floor
+            v = self.roomDims[room]["floor"]
             
             mesh = bpy.data.meshes.new('room' + str(room))
             basic_cube = bpy.data.objects.new('room' + str(room), mesh)
@@ -472,9 +430,9 @@ class ConnectedRooms(object):
             bm.to_mesh(mesh)
             bm.free()
 
-            bpy.ops.transform.resize(value=(v.width, v.height, 1))
+            bpy.ops.transform.resize(value=(v["width"], v["height"], 1))
 
-            bpy.ops.transform.translate(value=(v.xMax-(v.width/2), v.yMax-(v.height/2), 0.5))
+            bpy.ops.transform.translate(value=(v["xMax"]-(v["width"]/2), v["yMax"]-(v["height"]/2), 0.5))
 
             activeObject = bpy.context.active_object #Set active object to variable
             
@@ -487,15 +445,15 @@ class ConnectedRooms(object):
             
         ## generate walls
         
-            for side in self.roomDims[room].walls.keys():
+            for side in self.roomDims[room]["walls"].keys():
             
-                wall = self.roomDims[room].walls[side]
+                wall = self.roomDims[room]["walls"][side]
                 
                 s = 0        
                     
                 if side == "top" or side == "bottom":
                     
-                    for seg in self.roomDims[room].walls[side].segments:
+                    for seg in self.roomDims[room]["walls"][side]["segments"]:
                         
                         mesh = bpy.data.meshes.new('wall' + str(room) + side + str(s))
                         basic_cube = bpy.data.objects.new('wall' + str(room) + side + str(s), mesh)
@@ -512,12 +470,12 @@ class ConnectedRooms(object):
                         bm.to_mesh(mesh)
                         bm.free()
                     
-                        length = seg[-1].x - seg[0].x + 1
+                        length = seg[-1][0] - seg[0][0] + 1
                         
             
                         bpy.ops.transform.resize(value=(length, 1, 2))
                         
-                        bpy.ops.transform.translate(value=(seg[-1].x-(length/2), seg[0].y-0.5, 0.5))
+                        bpy.ops.transform.translate(value=(seg[-1][0]-(length/2), seg[0][1]-0.5, 0.5))
                         
                         activeObject = bpy.context.active_object #Set active object to variable
                 
@@ -531,7 +489,7 @@ class ConnectedRooms(object):
                     
                 elif side == "left" or side == "right":
                     
-                    for seg in self.roomDims[room].walls[side].segments:
+                    for seg in self.roomDims[room]["walls"][side]["segments"]:
                         
                         
                         mesh = bpy.data.meshes.new('wall' + str(room) + side + str(s))
@@ -549,11 +507,11 @@ class ConnectedRooms(object):
                         bm.to_mesh(mesh)
                         bm.free()
                                         
-                        length = seg[-1].y - seg[0].y + 1
+                        length = seg[-1][1] - seg[0][1] + 1
                                     
                         bpy.ops.transform.resize(value=(1, length, 2))
                         
-                        bpy.ops.transform.translate(value=(seg[-1].x-0.5,seg[-1].y-(length/2), 0.5))
+                        bpy.ops.transform.translate(value=(seg[-1][0]-0.5,seg[-1][1]-(length/2), 0.5))
                         
                         activeObject = bpy.context.active_object #Set active object to variable
                 
@@ -607,7 +565,6 @@ class ConnectedRooms(object):
                     basic_cube.select_set(False)
                     
                     k += 1
-
 #-----------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -616,4 +573,4 @@ if __name__ == '__main__':
     cr.getFloorDims()
     cr.getWallDims()
     cr.print_map()
-    #cr.render()
+    cr.render()
