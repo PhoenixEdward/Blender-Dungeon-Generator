@@ -1,4 +1,7 @@
-from main import Vector2Int
+try:
+    from main import Vector2Int
+except:
+    pass
 
 class Wall():
     def __init__(self):
@@ -14,23 +17,32 @@ class Wall():
 
 class Floor():
     def __init__(self, tiles):
-        self.xMax = max(tiles[0])
-        self.xMin = min(tiles[0])
-        self.yMax = max(tiles[1])
-        self.yMin = min(tiles[1])
-        self.width = max(tiles[0]) - min(tiles[0]) + 1
-        self.height = max(tiles[1]) - min(tiles[1]) + 1
+        self.tiles = tiles
+
+        x = []
+        y = []
+
+        for tile in tiles:
+            x.append(tile[0])
+            y.append(tile[1])
+
+        self.xMax = max(x)
+        self.xMin = min(x)
+        self.yMax = max(y)
+        self.yMin = min(y)
+        self.width = self.xMax - self.xMin + 1
+        self.height = self.yMax - self.yMin + 1
 
     def copy(self):
         return self
 
 class Area():
-    def __init__(self, tilemapper, roomKey, tiles):
-        self.roomKey = roomKey
-        self.floor = Floor(tiles)
-        self.walls = getWalls()
+    def __init__(self, tilemapper, floorTiles):
+        self.roomIndex = tilemapper.roomIndex
+        self.floor = Floor(floorTiles)
+        self.walls = self.getWalls(tilemapper)
 
-    def getWalls(self):
+    def getWalls(self,tilemapper):
         walls = {
         "top": Wall(),
         "bottom": Wall(),
@@ -38,12 +50,13 @@ class Area():
         "right": Wall()
         }
 
+        tiles = self.floor
     ## wouldn't need to do this in c# with a public enum.
         TILE_VOID        = 0 #' '
         TILE_FLOOR       = 1 #'.'
         TILE_WALL        = 2 #'#'
         TILE_CORNER      = 3 #'!'
-        TILE_DOOR        = 4 #'+'
+        TILE_HALL        = 4 #'+'
         TILE_PLAYER      = 6 #'@'
         TILE_ROOM_CORNER = 7 #'?'
         TILE_VISITED     = 8 #'$'
@@ -79,19 +92,19 @@ class Area():
 
         ##check if tiles have been visited and adjust edges accordingingly
             
-        startTop = self.walls.min.copy()
-        startBottom = self.walls.min.copy()
+        startTop = walls["top"].min
+        startBottom = walls["bottom"].min
 
         wallWidth = roomWidth
 
         push = 0
 
         while push < roomWidth:
-            if startTop.x + push < self.map_width:
+            if startTop.x + push < tilemapper.map_width:
                 if tilemapper.dmap[startTop.x + push,startTop.y] == TILE_WALL or tilemapper.dmap[startTop.x + push,startTop.y] == TILE_CORNER:
                     startTop = Vector2Int(startTop.x + push,startTop.y)
                     break
-                elif tilemapper.dmap[startTop.x + push,startTop.y] == TILE_DOOR:
+                elif tilemapper.dmap[startTop.x + push,startTop.y] == TILE_HALL:
                     walls["top"].hasDoor = True
                 wallWidth -= 1
                 push += 1
@@ -104,17 +117,17 @@ class Area():
         lastCount = 0
                         
         for j in range(wallWidth):
-            if startTop.x + j < self.map_width:
+            if startTop.x + j < tilemapper.map_width:
                 if wallCount == lastCount:
                     if tilemapper.dmap[startTop.x + j, startTop.y] == TILE_WALL or tilemapper.dmap[startTop.x + j, startTop.y] == TILE_CORNER:
                         walls["top"].segments.append([Vector2Int(startTop.x+j,startTop.y)])
-                        tilemapper.dmap[startTop.x+j,startTop.y] = TILE_VISITED
+                        #tilemapper.dmap[startTop.x+j,startTop.y] = TILE_VISITED
                         wallCount += 1
                 else:
                     if tilemapper.dmap[startTop.x + j, startTop.y] == TILE_WALL or tilemapper.dmap[startTop.x + j, startTop.y] == TILE_CORNER:
                         walls["top"].segments[lastCount].append(Vector2Int(startTop.x+j,startTop.y))
-                        tilemapper.dmap[startTop.x+j,startTop.y] = TILE_VISITED
-                    elif tilemapper.dmap[startTop.x + j,startTop.y] == TILE_DOOR:
+                        #tilemapper.dmap[startTop.x+j,startTop.y] = TILE_VISITED
+                    elif tilemapper.dmap[startTop.x + j,startTop.y] == TILE_HALL:
                         walls["top"].hasDoor = True
                     else:
                         lastCount += 1
@@ -124,11 +137,11 @@ class Area():
         push = 0
 
         while push < roomWidth:
-            if startBottom.x + push < self.map_width:
+            if startBottom.x + push < tilemapper.map_width:
                 if tilemapper.dmap[startBottom.x + push,startBottom.y] == TILE_WALL or tilemapper.dmap[startBottom.x + push,startBottom.y] == TILE_CORNER:
                     startBottom = Vector2Int(startBottom.x + push,startBottom.y)
                     break
-                elif tilemapper.dmap[startBottom.x + push,startBottom.y] == TILE_DOOR:
+                elif tilemapper.dmap[startBottom.x + push,startBottom.y] == TILE_HALL:
                     walls["bottom"].hasDoor = True
                 wallWidth -= 1
                 push += 1
@@ -143,17 +156,17 @@ class Area():
         ## iterate for second x corner
 
         for j in range(wallWidth):
-            if startBottom.x + j < self.map_width:
+            if startBottom.x + j < tilemapper.map_width:
                 if wallCount == lastCount:
                     if tilemapper.dmap[startBottom.x + j, startBottom.y] == TILE_WALL or tilemapper.dmap[startBottom.x + j, startBottom.y] == TILE_CORNER:
                         walls["bottom"].segments.append([Vector2Int(startBottom.x+j,startBottom.y)])
-                        tilemapper.dmap[startBottom.x+j,startBottom.y] = TILE_VISITED
+                        #tilemapper.dmap[startBottom.x+j,startBottom.y] = TILE_VISITED
                         wallCount += 1
                 else:
                     if tilemapper.dmap[startBottom.x + j, startBottom.y] == TILE_WALL or tilemapper.dmap[startBottom.x + j, startBottom.y] == TILE_CORNER:
                         walls["bottom"].segments[lastCount].append(Vector2Int(startBottom.x+j,startBottom.y))
-                        tilemapper.dmap[startBottom.x+j,startBottom.y] = TILE_VISITED
-                    elif tilemapper.dmap[startBottom.x + j,startBottom.y] == TILE_DOOR:
+                        #tilemapper.dmap[startBottom.x+j,startBottom.y] = TILE_VISITED
+                    elif tilemapper.dmap[startBottom.x + j,startBottom.y] == TILE_HALL:
                         walls["bottom"].hasDoor = True
                     else:
                         lastCount += 1
@@ -162,10 +175,8 @@ class Area():
 
         roomHeight = tiles.yMax - tiles.yMin + 3
 
-        walls = self.areas[room].walls
-
-        startLeft = walls["left"].min.copy()
-        startRight = walls["right"].min. copy()
+        startLeft = walls["left"].min
+        startRight = walls["right"].min
 
         wallHeight = roomHeight
 
@@ -174,11 +185,11 @@ class Area():
         ##possibly remove tile_corner
 
         while push < roomHeight:
-            if startLeft.y + push < self.map_height:
+            if startLeft.y + push < tilemapper.map_height:
                 if tilemapper.dmap[startLeft.x,startLeft.y + push] == TILE_WALL or tilemapper.dmap[startLeft.x,startLeft.y+ push] == TILE_CORNER:
                     startLeft = Vector2Int(startLeft.x,startLeft.y+push)
                     break
-                elif tilemapper.dmap[startLeft.x,startLeft.y+ push] == TILE_DOOR:
+                elif tilemapper.dmap[startLeft.x,startLeft.y+ push] == TILE_HALL:
                     walls["left"].hasDoor = True
                 wallHeight -= 1
                 push += 1
@@ -193,17 +204,17 @@ class Area():
         ## iterate for y corner
             
         for j in range(wallHeight):
-            if startLeft.y + j < self.map_height:
+            if startLeft.y + j < tilemapper.map_height:
                 if wallCount == lastCount:
                     if tilemapper.dmap[startLeft.x, startLeft.y + j] == TILE_WALL:
                         walls["left"].segments.append([Vector2Int(startLeft.x,startLeft.y + j)])
-                        tilemapper.dmap[startLeft.x,startLeft.y + j] = TILE_VISITED
+                        #tilemapper.dmap[startLeft.x,startLeft.y + j] = TILE_VISITED
                         wallCount += 1
                 else:
                     if tilemapper.dmap[startLeft.x, startLeft.y + j] == TILE_WALL:
                         walls["left"].segments[lastCount].append(Vector2Int(startLeft.x, startLeft.y+j))
-                        tilemapper.dmap[startLeft.x, startLeft.y+j] = TILE_VISITED
-                    elif tilemapper.dmap[startLeft.x,startLeft.y + j] == TILE_DOOR:
+                        #tilemapper.dmap[startLeft.x, startLeft.y+j] = TILE_VISITED
+                    elif tilemapper.dmap[startLeft.x,startLeft.y + j] == TILE_HALL:
                         walls["left"].hasDoor = True
                     else:
                         lastCount += 1
@@ -213,12 +224,12 @@ class Area():
         push = 0
 
         while push < roomHeight:
-            if startRight.y + push < self.map_height:
+            if startRight.y + push < tilemapper.map_height:
                 if tilemapper.dmap[startRight.x,startRight.y+ push] == TILE_WALL or tilemapper.dmap[startRight.x,startRight.y+ push] == TILE_CORNER:
                     startRight = Vector2Int(startRight.x,startRight.y+ push)
                     break
-                elif tilemapper.dmap[startRight.x,startRight.y+ push] == TILE_DOOR:
-                    walls["right"] = True
+                elif tilemapper.dmap[startRight.x,startRight.y+ push] == TILE_HALL:
+                    walls["right"].hasDoor = True
                 wallHeight -= 1
                 push += 1
             else:
@@ -229,17 +240,17 @@ class Area():
         ##iterate for second y
             
         for j in range(wallHeight):
-            if startRight.y + j < self.map_height:
+            if startRight.y + j < tilemapper.map_height:
                 if wallCount == lastCount:
                     if tilemapper.dmap[startRight.x, startRight.y + j] == TILE_WALL:
                         walls["right"].segments.append([Vector2Int(startRight.x,startRight.y + j)])
-                        tilemapper.dmap[startRight.x,startRight.y + j] = TILE_VISITED
+                        #tilemapper.dmap[startRight.x,startRight.y + j] = TILE_VISITED
                         wallCount += 1
                 else:
                     if tilemapper.dmap[startRight.x, startRight.y + j] == TILE_WALL:
                         walls["right"].segments[lastCount].append(Vector2Int(startRight.x,startRight.y + j))
-                        tilemapper.dmap[startRight.x, startRight.y+j] = TILE_VISITED
-                    elif tilemapper.dmap[startRight.x,startRight.y + j] == TILE_DOOR:
+                        #tilemapper.dmap[startRight.x, startRight.y+j] = TILE_VISITED
+                    elif tilemapper.dmap[startRight.x,startRight.y + j] == TILE_HALL:
                         walls["right"].hasDoor = True
                     else:
                         lastCount += 1
@@ -251,8 +262,7 @@ class Area():
 
 
 class Path(Area):
-    def __init__(self):
-        self.opensLeft = False
-        self.opensRight = False
-        self.opensTop = False
-        self.opensBottom = False
+    def __init__(self, tilemapper, floorTiles, clearHorizontal):
+        self.floor = Floor(floorTiles)
+        self.walls = self.getWalls(tilemapper)
+        self.clearHorizontal = clearHorizontal

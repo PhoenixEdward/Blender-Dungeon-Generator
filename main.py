@@ -17,7 +17,7 @@ try:
 except:
     pass
     
-from random import randint, choice, random, uniform
+from random import randint, choice, random, uniform, getrandbits
 import numpy as np
 
 
@@ -29,7 +29,7 @@ TILE_VOID        = 0 #' '
 TILE_FLOOR       = 1 #'.'
 TILE_WALL        = 2 #'#'
 TILE_CORNER      = 3 #'!'
-TILE_DOOR        = 4 #'+'
+TILE_HALL        = 4 #'+'
 TILE_PLAYER      = 6 #'@'
 TILE_ROOM_CORNER = 7 #'?'
 TILE_VISITED     = 8 #'$'
@@ -61,7 +61,6 @@ class TileMapper(object):
         self.roomIndex = 0
         self.roomCount = roomCount
         self.rmap=np.zeros((width, height), dtype=np.uint8)
-        self.proof=np.zeros((width, height), dtype=np.uint8) 
         self.areas = []
 
     #-----------------------------------------------------------------------------------------------
@@ -72,12 +71,11 @@ class TileMapper(object):
                 self.roomIndex += 1
             if self.roomIndex == self.roomCount:
                 break
-        self.proof = self.dmap.copy()
 
     #-----------------------------------------------------------------------------------------------
     def cave(self, first_room):
-        width=randint(5,15)
-        height=randint(5,15)
+        width=randint(10,15)
+        height=randint(10,15)
         x0=randint(2,self.map_width - width - 1) - 2
         y0=randint(2,self.map_height - height -1) - 2
         x1=x0 + width + 2
@@ -86,7 +84,7 @@ class TileMapper(object):
 
         for y in range(y0, y1):
             for x in range(x0, x1):
-                if self.dmap[x,y]==TILE_FLOOR:      #if the new room toches any other floor then this room is invalid
+                if self.dmap[x,y]==TILE_FLOOR:      #if the new room toches any other floor OR hallway then this room is invalid
                     return False
 
         doors=[]    #list of potential doors
@@ -107,110 +105,151 @@ class TileMapper(object):
                 clearLeft = False
                 clearRight = False
 
-                for i in range(1,x1 - door[0]):
-                    if self.dMap[door[0] + i, door[1]] != TILE_WALL or self.dMap[door[0] + i, door[1]] == TILE_CORNER or door[0] + i >= x1:
-                        pass
-                    if i >= 2:
+                j=0
+
+                for i in range(door[0],x1+1):
+                    #print("check: " + str(i) + " Door x:" + str(door[0]), " Max X: " + str(x1))
+                    if self.dmap[i, door[1]] != TILE_WALL or self.dmap[ i, door[1]] == TILE_CORNER:
+                        break
+                    else:
+                        j+=1
+                    if j >= 2:
                         clearRight = True
-                for i in range(door[0] - x0 - 1,-1,-1):
-                    if self.dMap[door[0] + i, door[1]] != TILE_WALL or self.dMap[door[0] + i, door[1]] == TILE_CORNER or door[0] + i <= x0:
-                        pass
-                    if i >= 2:
+                j=0
+                for i in range(door[0],x0-1,-1):
+                    if self.dmap[i, door[1]] != TILE_WALL or self.dmap[ i, door[1]] == TILE_CORNER:
+                        break
+                    else:
+                        j+=1
+                    if j >= 2:
                         clearLeft = True
-                for i in range(1,y1 - door[1]):
-                    if self.dMap[door[0], door[1] + i] != TILE_WALL or self.dMap[door[0], door[1] + i] == TILE_CORNER or door[1] + i >= y1:
-                        pass
-                    if i >= 2:
+                j=0
+                for i in range(door[1],y1+1):
+                    if self.dmap[door[0], i] != TILE_WALL or self.dmap[door[0], i] == TILE_CORNER:
+                        break
+                    else:
+                        j+=1
+                        #print(j)
+                    if j >= 2:
                         clearTop = True
-                for i in range(door[1] - y0 - 1,-1,-1):
-                    if self.dMap[door[0], door[1] + i] != TILE_WALL or self.dMap[door[0], door[1] + i] == TILE_CORNER or door[1] + i <= y0:
-                        pass
-                    if i >= 2:
+                j=0
+                for i in range(door[1],y0-1,-1):
+                    if self.dmap[door[0], i] != TILE_WALL or self.dmap[door[0], i] == TILE_CORNER:
+                        break
+                    else:
+                        j+=1
+                    if j >= 2:
                         clearBottom = True
                 
+                clearHorizontal = None
                 hallTiles = []
 
                 if clearLeft and clearRight:
+                    clearHorizontal = True
                     if door[1] == y0:
-                        rando = bool(random.getrandbits(1))
+                        rando = bool(getrandbits(1))
+                        rando2 = bool(getrandbits(1))
                         if rando == 0:
-                            halltiles.append(door)
-                            hallTiles.append([door[0]-1,door[1]])
-                            hallTiles.append([door[0]-1, door[1]-1])
-                            halltiles.append([door[0], door[1]-1])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0], door[1]-1])
+                            if rando2 == 1:
+                                hallTiles.append([door[0]-1,door[1]])
+                                hallTiles.append([door[0]-1, door[1]-1])
+                                hallTiles.append([door[0]-2,door[1]])
+                                hallTiles.append([door[0]-2, door[1]-1])
+
                         if rando == 1:
-                            halltiles.append(door)
-                            hallTiles.append([door[0]+1,door[1]])
-                            hallTiles.append([door[0]+1, door[1]-1])
-                            halltiles.append([door[0], door[1]-1])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0], door[1]-1])
+                            if rando2 == 1:
+                                hallTiles.append([door[0]+1,door[1]])
+                                hallTiles.append([door[0]+1, door[1]-1])
+                                hallTiles.append([door[0]+2,door[1]])
+                                hallTiles.append([door[0]+2, door[1]-1])
 
                     if door[1] == y1:
-                        rando = bool(random.getrandbits(1))
+                        rando = bool(getrandbits(1))
+                        rando2 = bool(getrandbits(1))
                         if rando == 0:
-                            halltiles.append(door)
-                            hallTiles.append([door[0]-1,door[1]])
-                            hallTiles.append([door[0]-1, door[1]+1])
-                            halltiles.append([door[0], door[1]+1])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0], door[1]+1])
+                            if rando2 == 0:
+                                hallTiles.append([door[0]-1, door[1]+1])
+                                hallTiles.append([door[0]-1,door[1]])
+                                hallTiles.append([door[0]-2, door[1]+1])
+                                hallTiles.append([door[0]-2,door[1]])
                         if rando == 1:
-                            halltiles.append(door)
-                            hallTiles.append([door[0]+1,door[1]])
-                            hallTiles.append([door[0]+1, door[1]+1])
-                            halltiles.append([door[0], door[1]+1])
-
-                halls.append(Path(self, roomIndex, hallTiles))
+                            hallTiles.append(door)
+                            hallTiles.append([door[0], door[1]+1])
+                            if rando2 == 0:
+                                hallTiles.append([door[0]+1,door[1]])
+                                hallTiles.append([door[0]+1, door[1]+1])
+                                hallTiles.append([door[0]+2,door[1]])
+                                hallTiles.append([door[0]+2, door[1]+1])
 
                 if clearTop and clearBottom:
+                    clearHorizontal = False
                     if door[0] == x0:
-                        rando = bool(random.getrandbits(1))
-                        rando2 = bool(random.getrandbits(1))
+                        rando = bool(getrandbits(1))
+                        rando2 = bool(getrandbits(1))
                         if rando == 0:
-                            halltiles.append(door)
-                            halltiles.append([door[0]-1, door[1]])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0]-1, door[1]])
                             if rando2 == 1:
                                 hallTiles.append([door[0],door[1]-1])
                                 hallTiles.append([door[0]-1, door[1]-1])
                                 hallTiles.append([door[0], door[1]-2])
-                                halltiles.append([door[0]-1, door[1]-2])
+                                hallTiles.append([door[0]-1, door[1]-2])
 
                         if rando == 1:
-                            halltiles.append(door)
-                            halltiles.append([door[0]-1, door[1]])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0]-1, door[1]])
                             if rando2 == 1:
                                 hallTiles.append([door[0],door[1]+1])
                                 hallTiles.append([door[0]-1, door[1]+1])
                                 hallTiles.append([door[0],door[1]+2])
                                 hallTiles.append([door[0]-1, door[1]+2])
                     if door[1] == x1:
-                        rando = bool(random.getrandbits(1))
-                        rando2 = bool(random.getrandbits(1))
+                        rando = bool(getrandbits(1))
+                        rando2 = bool(getrandbits(1))
                         if rando == 0:
-                            halltiles.append(door)
-                            halltiles.append([door[0]+1, door[1]])
+                            hallTiles.append(door)
+                            hallTiles.append([door[0]+1, door[1]])
                             if rando2 == 1:
-                                hallTiles.append([door[0],door[1]-1])
+                                hallTiles.append([door[0]+2,door[1]-1])
                                 hallTiles.append([door[0]+1, door[1]-1])
-                                hallTiles.append([door[0],door[1]-2])
-                                hallTiles.append([door[0]+1, door[1]-2])
+                                hallTiles.append([door[0]+1,door[1]])
+                                hallTiles.append([door[0]+2,door[1]])
                         if rando == 1:
-                            halltiles.append(door)
+                            hallTiles.append(door)
                             hallTiles.append([door[0],door[1]+1])
-                            if rando2 = 1:
+                            if rando2 == 1:
                                 hallTiles.append([door[0]+1, door[1]+1])
-                                halltiles.append([door[0]+1, door[1]])
-                                hallTiles.append([door[0]+1, door[1]+1])
-                                halltiles.append([door[0]+1, door[1]])
+                                hallTiles.append([door[0]+1, door[1]])
+                                hallTiles.append([door[0]+2, door[1]+1])
+                                hallTiles.append([door[0]+2, door[1]])
+                                
+                if len(hallTiles) > 0:
+                    halls.append(Path(self, hallTiles, clearHorizontal))
 
-                halls.append(Path(self, roomIndex, hallTiles))
-
-
-            if len(halls)==0:   #if we didnt find any doors then this is not valid room attached to another room
+            if len(halls)==0:
                 return False
         
         if not first_room:
             door=choice(halls)
-            for tile in door:
-                self.dmap[tile[0], tile[1]]=TILE_DOOR
-        #if we got this far we have a valid room so carve it out of the void
+            for tile in door.floor.tiles:
+                self.dmap[tile[0], tile[1]]=TILE_HALL 
+            if door.floor.xMax == x0 and door.clearHorizontal == False:
+                x0 = x0 + door.floor.width
+            elif door.floor.xMin == x1 and door.clearHorizontal == False:
+                x1 = x1 - door.floor.width
+            if door.floor.yMax == y0 and door.clearHorizontal == True:
+                y0 = y0 + door.floor.height
+            elif door.floor.yMin == x1 and door.clearHorizontal == True:
+                y1 = y1 - door.floor.height
+
+        floorTiles = []
+                #if we got this far we have a valid room so carve it out of the void
         for y in range(y0, y1):
             for x in range(x0, x1): 
                 if self.dmap[x,y]!=TILE_CORNER:     #dont over write another corner
@@ -222,14 +261,17 @@ class TileMapper(object):
                         self.dmap[x,y]=TILE_WALL
                     else:
                         self.dmap[x,y]=TILE_FLOOR
-                        index =self.roomIndex
+                        self.rmap[x,y]=self.roomIndex
+                        floorTiles.append([x,y])
+
+        area = Area(self,floorTiles)
 
         if first_room:
             h=randint(0,width-1)+x0+1
             v=randint(0,height-1)+y0+1
             self.dmap[h,v]=TILE_PLAYER
         
-        self.areas.append(room)
+        self.areas.append(area)
 
         return True
             #add any other items or npcs to the rooms here. see player random location for example
@@ -239,20 +281,20 @@ class TileMapper(object):
         #change the TILE_CORNER to another character such as ! to see the corners in the map.        
         for k in range(len(self.areas)):
             v = self.areas[k].floor
-            self.proof[v.xMax,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMax] = TILE_ROOM_CORNER
-            self.proof[v.xMax,v.yMin] = TILE_ROOM_CORNER
-            self.proof[v.xMin,v.yMin] = TILE_ROOM_CORNER
+            self.dmap[v.xMax,v.yMax] = TILE_ROOM_CORNER
+            self.dmap[v.xMin,v.yMax] = TILE_ROOM_CORNER
+            self.dmap[v.xMax,v.yMin] = TILE_ROOM_CORNER
+            self.dmap[v.xMin,v.yMin] = TILE_ROOM_CORNER
             
                 #change the TILE_CORNER to another character such as ! to see the corners in the map.
-        icons={TILE_VOID:' ', TILE_FLOOR:'.', TILE_WALL:'#', TILE_CORNER:'!', TILE_DOOR:'+', TILE_PLAYER:'@', TILE_ROOM_CORNER:'?', TILE_VISITED:'$',TILE_POPULAR:'&', TILE_WALL_CORNER:'%'}
+        icons={TILE_VOID:' ', TILE_FLOOR:'.', TILE_WALL:'#', TILE_CORNER:'!', TILE_HALL:'+', TILE_PLAYER:'@', TILE_ROOM_CORNER:'?', TILE_VISITED:'$',TILE_POPULAR:'&', TILE_WALL_CORNER:'%'}
         for v in range(self.map_height-1, -1,-1):
             ln=''
             for h in range(self.map_width):
-                if self.proof[h,v] == TILE_FLOOR:
+                if self.dmap[h,v] == TILE_FLOOR:
                     ln+=str(self.rmap[h,v])
                 else:
-                    ln+=icons[self.proof[h,v]]
+                    ln+=icons[self.dmap[h,v]]
             print(ln)
 
     #-----------------------------------------------------------------------------------------------
@@ -376,9 +418,6 @@ class TileMapper(object):
                         basic_cube.select_set(False)
                         
                         s+=1 
-                                
-                else:
-                    print("somthing fucked up")
             
  
         ## generate doors
@@ -388,7 +427,7 @@ class TileMapper(object):
             
         for v in range(self.map_height):
             for h in range(self.map_width):
-                if self.dmap[h,v] == TILE_DOOR or self.dmap[h,v] == TILE_DOOR:
+                if self.dmap[h,v] == TILE_HALL or self.dmap[h,v] == TILE_HALL:
                     
                     mesh = bpy.data.meshes.new('door' + str(k))
                     basic_cube = bpy.data.objects.new('door' + str(k), mesh)
@@ -425,7 +464,5 @@ class TileMapper(object):
 if __name__ == '__main__':
     cr=TileMapper(50,50,6)
     cr.generate()
-    cr.getFloorDims()
-    cr.getWallDims()
     cr.print_map()
     #cr.render()
